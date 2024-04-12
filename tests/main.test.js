@@ -1,27 +1,31 @@
-//haslo123
 const chai = require('chai')
 const chaiHttp = require('chai-http')
 const app = require('../index')
-const mongoose = require('mongoose')
 
 chai.use(chaiHttp)
 const expect = chai.expect
 
-describe('Express API Tests', () => {
-    before((done) => {
-        // Connecting testDatabase before tests
-        mongoose.connect('mongodb+srv://filipg2137:haslo123@cluster0.rpsef45.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0',
-        { useNewUrlParser: true, useUnifiedTopology: true }, () => {
-            mongoose.connection.dropDatabase(() => {
+describe('Registration endpoint', () => {
+    it('should register new user', (done) => {
+        chai.request(app)
+            .post('/registration')
+            .send({ username: 'testuser', password: 'testpassword', userType: 'basic' })
+            .end((err, res) => {
+                expect(res).to.have.status(201)
+                expect(res.body).to.have.property('message').equal('User registered succesfully')
+                expect(res.body.user).to.have.property('username').equal('testusere')
                 done()
             })
-        })
     })
 })
 
-after((done) => {
-    // After tests disconnect with database
-    mongoose.connection.close(() => {
-        done()
+    it('should return an error for duplicate user', (done) => {
+        chai.request(app)
+            .post('/registration')
+            .send({ username: 'testuser', password: 'testpassword', userType: 'basic' })
+            .end((err, res) => {
+                expect(res).to.have.status(400)
+                expect(res.body).to.have.property('error').equal('Username already exists')
+                done()
+            })
     })
-})
