@@ -1,7 +1,6 @@
 const express = require('express')
 const mongoose = require('mongoose')
 const axios = require('axios')
-const { RateLimiterMemory } = require('rate-limiter-flexible')
 const connect = require('./db')
 
 const port = 3000
