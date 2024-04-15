@@ -30,7 +30,6 @@ const Movie = mongoose.model('Movie', movieSchema)
 
 
 // Endpoint - creating movies
-// Endpoint - creating movies
 app.post('/movies', async (req, res) => {
     try {
         const { title, userId } = req.body
