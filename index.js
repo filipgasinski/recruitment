@@ -24,20 +24,18 @@ const movieSchema = new mongoose.Schema({
     released: Date,
     genre: String,
     Director: String,
-    userId: String
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    createdAt: { type: Date, default: Date.now }
 })
 const Movie = mongoose.model('Movie', movieSchema)
 
-// Basic user limit - 5 movies per month
-const userLimiter = new RateLimiterMemory({
-    points: 5,  
-    duration: 30 * 24 * 60 * 60 // 30 days in seconds
-})
 
+// Endpoint - creating movies
 // Endpoint - creating movies
 app.post('/movies', async (req, res) => {
     try {
         const { title, userId } = req.body
+        console.log('User ID:', userId);
         const user = await User.findById(userId)
 
         if (!user) {
@@ -45,15 +43,6 @@ app.post('/movies', async (req, res) => {
         }
 
         const userType = user.userType
-
-        // Checking if user is basic and his limit 5 movies per month
-        if (userType === 'basic') {
-            const userLimiterResponse = await userLimiter.consume(userId)
-
-            if (userLimiterResponse || userLimiterResponse.remainingPoints <= 0) {
-                return res.status(429).json({ error: 'Rate limit exceeded for basic user' })
-            }
-        }
 
         // Fetch movies from OMDb API
         const omdbResponse = await axios.get('http://www.omdbapi.com/?i=tt3896198&apikey=a5bb452c')
@@ -66,19 +55,35 @@ app.post('/movies', async (req, res) => {
             director: movieDetails.Director,
             userId,
         })
-
         await newMovie.save()
+
+        // Count movies created by the user in the current month
+        const currentMonth = new Date().getMonth() + 1 // Get current month
+        const currentYear = new Date().getFullYear() // Get current year
+
+        const startDate = new Date(`${currentYear}-${currentMonth}-01`);
+        const endDate = new Date(`${currentYear}-${currentMonth}-31`);
+
+        const movieCount = await Movie.countDocuments({
+            userId,
+            createdAt: {
+                $gte: startDate,
+                $lte: endDate,
+            }
+        })
+        console.log('Movie Count:', movieCount);
+
+        if (userType === 'basic' && movieCount >= 6) {
+            return res.status(429).json({ error: 'Movie creation limit exceeded for basic user' })
+        }
 
         res.status(201).json({ message: 'Movie created successfully', movie: newMovie })
     } catch (error) {
         console.error('Error creating movie: ', error)
-        if (error instanceof Error && error.message.includes('userLimiter')) {
-            res.status(429).json({ error: 'Rate limit exceeded for basic user' })
-        } else {
-            res.status(500).json({ error: 'Internal server error' })
+        res.status(500).json({ error: 'Internal server error' })
         }
-    }
-})
+    })
+
 
 // Endpoint - Get user movies (by user ID)
 app.get('/movies/:userId', async (req, res) => {
@@ -95,7 +100,7 @@ app.get('/movies/:userId', async (req, res) => {
 // Endpoint - user authentication
 app.post('/auth', async (req, res) => {
     try {
-        const { username, password } = req.bod
+        const { username, password } = req.body
         const user = await User.findOne({ username }).exec()
         
         if (!user) {

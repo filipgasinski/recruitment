@@ -13,11 +13,10 @@ describe('Registration endpoint', () => {
             .end((err, res) => {
                 expect(res).to.have.status(201)
                 expect(res.body).to.have.property('message').equal('User registered succesfully')
-                expect(res.body.user).to.have.property('username').equal('testusere')
+                expect(res.body.user).to.have.property('username').equal('testuser')
                 done()
             })
     })
-})
 
     it('should return an error for duplicate user', (done) => {
         chai.request(app)
@@ -29,3 +28,4 @@ describe('Registration endpoint', () => {
                 done()
             })
     })
+})
